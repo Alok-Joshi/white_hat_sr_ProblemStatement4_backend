@@ -8,7 +8,6 @@ import database
 origins = [ '*' ]
 
 app = FastAPI(title = "CanteenBooking")
-o_auth_token: dict[str,str] = {} #to store the jwt and its corrsponding o_auth
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,10 +52,9 @@ def login(pl: payload):
     if pl.password == None:
         raise HTTPException(status_code=404, detail="No Password Provided")
     else:
-        o_auth = database.get_o_auth(pl.email,pl.password)
-        if o_auth is not None: 
+        auth_success = database.authenticate(pl.email,pl.password)
+        if auth_success is not None: 
                 new_jwt_token = get_jwt_token(pl.email)
-                o_auth_token[new_jwt_token] = o_auth
                 return {"message" : "Logged In Succesfully", "token" : new_jwt_token}
         else:
                 raise HTTPException(status_code=404, detail="User Not Found")
@@ -66,14 +64,10 @@ def login(pl: payload):
 def register(pl : payload):
     if pl.password != None:
 
-        new_user_o_auth = database.create_user(pl.email,pl.password)
-
-        if(new_user_o_auth is not None):
+        new_user_result = database.create_user(pl.email,pl.password)
+        if(new_user_result is not None):
                 new_jwt_token = get_jwt_token(pl.email)
-
-                o_auth_token[new_jwt_token] = new_user_o_auth
                 return { "message" : "User was registered Succesfully","token" : get_jwt_token(pl.email) }
-
                 
         else:
                 raise HTTPException(status_code=404, detail="User Already exists")
@@ -94,8 +88,8 @@ def book_table(bk: booking,token: str = Header(None)):
     booking_result = database.create_contiguous_booking(bk.seat_count);
     if(booking_result is not None):
         #create the order
-        o_auth_tok = o_auth_token[token]
-        order_creation_result = database.create_order(o_auth_tok,booking.order)
+        email = jwt.decode(token,options = {"verify_signature":False})["email"]
+        order_creation_result = database.create_order(email,booking.order)
 
         if(order_creation_result is not None):
             #TODO: Return a  dictionary denoting success
