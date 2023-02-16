@@ -17,13 +17,28 @@ def authenticate(email="xyz@gmail.com", password="password"):
             return None
     return res
 
-def create_user(email, password):
+def create_user(email="xy@gmail.com", password="password"):
     #check if email already exists, if yes return NONE else return true
     user = db.user
-    pass
+    res = list(user.find({"email":email}))
+    if len(res)==0:
+        #no user with this email exists
+        userdata = {"email": email, "password":password}
+        user.insert_one(userdata)
+        return True
+    else:
+        #user exists
+        return None
+
 def create_contiguous_booking(email, count, time):
     #TODO: write booking algorithm
     #if can book seats mutex lock, and return table(s) allocated else return NONE
+    table = db.table
+    res = table.find({"$and":[{"bookings.from":time}, {"bookings.to":time+datetime.timedelta(minutes=30)}]})
+    if len(list(res))==0:
+        #no bookings for given timeslot for any table
+        #first =
+        pass
     return None
 
 def create_order(email, items, time):
@@ -33,7 +48,11 @@ def create_order(email, items, time):
 
 def get_menu(canteen_id=1):
     #return menu items list with price
-    return None
+    menu = db.menu
+    res = menu.find_one({"canteen_id":canteen_id})
+    if res==None:
+        return None
+    return res.get('items')
 
 
-print(authenticate())
+print(get_menu())
