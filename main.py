@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import jwt
 import datetime
 import database
+import streams
 
 origins = [ '*' ]
 
@@ -150,7 +151,7 @@ async def order_status(websocket: WebSocket, order_id: str):
     await websocket.accept()
     while True:
         client_data = await websocket.receive_text()
-        modified_order_document = database.check_order_document(order_id)
+        modified_order_document = streams.get_order_update(order_id)
         modified_order_document_string = json.dumps(modified_order_document)
         await websocket.send_text(modified_order_document)
 
@@ -161,7 +162,7 @@ async def new_order(websocket: WebSocket):
     await websocket.accept()
     while True:
         client_data = await websocket.receive_text()
-        new_ord = database.check_new_order()
+        new_ord = streams.get_new_order()
         new_ord_string = json.dumps(new_ord)
         await websocket.send_text(new_ord_string)
         
