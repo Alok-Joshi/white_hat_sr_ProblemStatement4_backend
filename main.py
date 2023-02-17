@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Header, HTTPException, Depends, WebSocket 
+from fastapi import FastAPI, Header, HTTPException, Depends, WebSocket , Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import jwt
@@ -61,6 +61,7 @@ def get_jwt_token(email: str):
 
 def check_jwt_token(token : str = Header(None)):
     try:
+        print("inside func:"+token)
         return jwt.decode(token, USER_SECRET_KEY, algorithms=["HS256"])
     except:
         raise HTTPException(status_code=404, detail="JWT_TOKEN_NOT_FOUND")
@@ -115,8 +116,10 @@ def get_bookings():
     pass
 
 @app.post("/booking", dependencies=[Depends(check_jwt_token)],status_code = 200)
-def book_table(bk: booking,token: str = Header(None)):
+def book_table(request: Request,bk: booking,token: str = Header(None)):
 
+    print("token: "+token)
+    print(request.headers.items())
     email = jwt.decode(token,options = {"verify_signature":False})["email"]
     booking_result = database.create_contiguous_booking(email,bk.seat_count,bk.start_time);
     if(booking_result is not None):
