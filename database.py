@@ -116,8 +116,10 @@ def get_menu(canteen_id):
 
 def get_orders(time_quantum=3):
     #return the orders for the next time_quantum hours
-    orders = db.orders
+    order = db.order
     now = datetime.datetime.now()
-    res = orders.find({"$and":[{"from":{"$gte":datetime.datetime.now()}},{"to":{"$lte":datetime.datetime.now()+datetime.timedelta(hours=time_quantum)}}]})
+    res = order.find({"$and":[{"from":{"$gte":now}},{"to":{"$lte":now+datetime.timedelta(hours=time_quantum)}}]})
     return list(res)
 
+
+print(get_orders(3))
