@@ -179,7 +179,7 @@ def update_order(ou: order_update):
     """ updates the order """
     order_list = []
 
-    order_update_result = database.update_order(ou.order_id,ou.order_status)
+    order_update_result = database.update_order(ou.order_id_list,ou.next_state)
     if(order_update_result is not None):
 
         return order_update_result
