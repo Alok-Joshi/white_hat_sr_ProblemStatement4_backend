@@ -56,7 +56,7 @@ def create_admin(email, password):
 def create_contiguous_booking(email, count, time):
     #search for tables with available seats in timeslot given
     table = db.table
-    all_tables = table.find()
+    all_tables = table.find().sort({"id":1})
     for i in all_tables:
         #iterate over all tables to fix some edge cases
         cur_table_id = i.get('_id')
@@ -129,5 +129,8 @@ def get_orders(time_quantum=3):
         ret.append(i)
     return ret
 
-
-print(get_orders(3))
+def update_order(order_ids, next_state):
+    order = db.order
+    res = order.update_many({"id":{"$in":order_ids}},{"$set":{"status":next_state}})
+    return True
+#print(update_order([2,3], "placed"))
