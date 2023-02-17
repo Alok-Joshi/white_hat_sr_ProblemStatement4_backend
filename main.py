@@ -28,6 +28,7 @@ class order(BaseModel):
     item_qty: int
 
 class next_orders(BaseModel):
+    id:int
     user_id: str
     status: str
     items: list[order]
