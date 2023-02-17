@@ -193,7 +193,7 @@ async def new_order(websocket: WebSocket):
             new_ord_string = json.dumps(new_ord)
             await websocket.send_text(new_ord_string)
 
-        if("time_quantum" in client_data):
+        elif("time_quantum" in client_data):
             time_quantum = client_data["time_quantum"]
             await websocket.send_text(json.dumps({"message":"time_quantum_recieved"}))
 
