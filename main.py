@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Header, HTTPException, Depends, WebSocket, Response
+from fastapi import FastAPI, Header, HTTPException, Depends, WebSocket 
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import jwt
@@ -80,27 +80,25 @@ def check_jwt_admin_token(token : str = Header(None)):
 
 
 @app.post("/login",status_code = 200)
-def login(response:Response, pl: payload):
+def login(pl: payload):
     if pl.password == None:
         raise HTTPException(status_code=404, detail="No Password Provided")
     else:
         auth_success = database.authenticate(pl.email,pl.password)
         if auth_success is not None: 
                 new_jwt_token = get_jwt_token(pl.email)
-                response.set_cookie(key = "jwt_token", value = new_jwt_token)
                 return {"message" : "Logged In Succesfully", "token" : new_jwt_token}
         else:
                 raise HTTPException(status_code=404, detail="User name not found or invalid password")
 
 
 @app.post("/register", status_code = 200)
-def register(response: Response, pl : payload):
+def register( pl : payload):
     if pl.password != None:
 
         new_user_result = database.create_user(pl.email,pl.password)
         if(new_user_result is not None):
                 new_jwt_token = get_jwt_token(pl.email)
-                response.set_cookie(key = "jwt_token", value = new_jwt_token)
                 return { "message" : "User was registered Succesfully","token" : new_jwt_token}
                 
         else:
