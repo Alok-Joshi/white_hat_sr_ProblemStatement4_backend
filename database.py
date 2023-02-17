@@ -56,13 +56,14 @@ def create_admin(email, password):
 def create_contiguous_booking(email, count, time):
     #search for tables with available seats in timeslot given
     table = db.table
-#    breakpoint()
+    time = time.replace(tzinfo=None)
     all_tables = table.find()
     for i in all_tables:
+        #breakpoint()
         #iterate over all tables to fix some edge cases
         cur_table_id = i.get('_id')
         cur_table_bookings = i.get('bookings')
-        if cur_table_bookings==None:
+        if cur_table_bookings==None and count<=i.get('max_seats'):
             #no future bookings on this table
             table.update_one({'_id':cur_table_id}, {'$push':{'bookings':{"from":time, "to":time+datetime.timedelta(minutes=30), "seats_booked":count, "by":[email]}}})
             return i.get('id')
@@ -72,8 +73,8 @@ def create_contiguous_booking(email, count, time):
                 if cur_table_bookings[j].get('from')==time and cur_table_bookings[j].get('to')==time+datetime.timedelta(minutes=30):
                     #print("true")
                     timeslot_present = True
-                    cur_seats_booked_for_slot = cur_table_bookings[j].get('seats_booked') 
-                    left_seats = i.get('max_seats')-cur_table_bookings[j].get('seats_booked')
+                    cur_seats_booked_for_slot = cur_table_bookings[j].get('seats_booked')
+                    left_seats = i.get('max_seats')-cur_seats_booked_for_slot
                     if(left_seats == 0) or (left_seats<count):
                         #timeslot found, no seats available to book
                         #skip checks of all further slots
@@ -84,7 +85,7 @@ def create_contiguous_booking(email, count, time):
                         table.update_one({'_id':cur_table_id},{'$set':{f"bookings.{j}.seats_booked":(cur_seats_booked_for_slot+count)}, '$push':{f"bookings.{j}.by": email}})
                         return {"table_name": i.get('id')}
 
-            if not timeslot_present:
+            if (not timeslot_present) and count<=i.get('max_seats'):
                 table.update_one({'_id':cur_table_id}, {'$push':{'bookings':{"from":time, "to":time+datetime.timedelta(minutes=30), "seats_booked":count, "by":[email]}}})
                 return {"table_name": i.get('id')}
     #no table matches condition
@@ -95,7 +96,6 @@ def create_contiguous_booking(email, count, time):
 
 def create_order(email, items, time, order_type=0):
     #place order, and return orderID
-    #TODO: algorithm to create uinque order id(seq numbers)
     order = db.order
     global order_no
     order_id = order_no
