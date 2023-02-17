@@ -23,13 +23,22 @@ USER_SECRET_KEY = "usercanteenbooking"
 ADMIN_SECRET_KEY = "adminusercanteenbooking"
 EXPIRY_TIME = 60 * 24 * 7
 
+class order(BaseModel):
+    item_id: int
+
+class next_orders(BaseModel):
+    user_id: str
+    status: str
+    items: list[order]
+    order_type: int
+    From : datetime.datetime
+    To: datetime.datetime
+    
 
 class payload(BaseModel):
     email: str
     password: str
 
-class order(BaseModel):
-    item_id: int
 
 class booking(BaseModel):
     seat_count: int
@@ -42,8 +51,8 @@ class menu_item(BaseModel):
     item_price : int
 
 class order_update(BaseModel):
-    order_id:str
-    order_status:str
+    order_id_list:list[int]
+    next_state:str
 
 def get_jwt_token(email: str):
     return jwt.encode({ "email" : email ,
@@ -80,7 +89,7 @@ def login(pl: payload):
                 new_jwt_token = get_jwt_token(pl.email)
                 return {"message" : "Logged In Succesfully", "token" : new_jwt_token}
         else:
-                raise HTTPException(status_code=404, detail="User Not Found")
+                raise HTTPException(status_code=404, detail="User name not found or invalid password")
 
 
 @app.post("/register", status_code = 200)
@@ -156,20 +165,26 @@ def update_item(mu: menu_item,canteen_id:int):
 #    pass
 
 #ORDER Endpoints
-@app.get("/orders/{canteen_id}",dependencies= [Depends(check_jwt_admin_token)],status_code = 200)
-def get_orders(canteen_id:int):
+@app.get("/orders/{time_quantum}",dependencies= [Depends(check_jwt_admin_token)],status_code = 200,response_model = list[next_orders])
+def get_orders(time_quantum:int):
     """ Returns the orders from current_time to current_time +3 to the frontend. Let the fronend categorise the order into (today, tomorrow, so and so forth)"""
-    pass
+    order_list = database.get_orders(time_quantum)
+    if order_list is not None:
+        return order_list
+    else:
+        return HTTPException(status_code=404, detail = "error,cannot find error ID")
 
 @app.put("/orders",dependencies= [Depends(check_jwt_admin_token)],status_code = 200)
 def update_order(ou: order_update):
     """ updates the order """
+    order_list = []
 
     order_update_result = database.update_order(ou.order_id,ou.order_status)
     if(order_update_result is not None):
-        #return success message
-        pass
+
+        return order_update_result
     else:
+
         raise HTTPException(status_code = 404, detail= "order updation failed")
 
 #LISTENERS 
