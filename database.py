@@ -91,4 +91,11 @@ def get_menu(canteen_id=1):
     return res.get('items')
 
 
+def get_orders(time_quantum=3):
+    #return the orders for the next time_quantum hours
+    orders = db.orders
+    now = datetime.datetime.now()
+    res = orders.find({"$and":[{"from":{"$gte":datetime.datetime.now()}},{"to":{"$lte":datetime.datetime.now()+datetime.timedelta(hours=time_quantum)}}]})
+    return list(res)
+
 print(create_order("xyz@gmial.com", ["chaha","khari"], datetime.datetime(2023, 2, 17, 11,0)))
