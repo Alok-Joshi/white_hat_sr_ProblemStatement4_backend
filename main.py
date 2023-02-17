@@ -44,6 +44,7 @@ class booking(BaseModel):
     seat_count: int
     orders: list[order]
     start_time: datetime.datetime
+    email:str
 
 
 class menu_item(BaseModel):
@@ -110,25 +111,18 @@ def register( pl : payload):
 
 
 
-@app.get("/booking", dependencies=[Depends(check_jwt_token)],status_code = 200)
-def get_bookings():
-    #implement in future when there is a need to display bookings like bookmyshow
-    pass
 
-@app.post("/booking", dependencies=[Depends(check_jwt_token)],status_code = 200)
-def book_table(request: Request,bk: booking,token: str = Header(None)):
+@app.post("/booking", status_code = 200)
+def book_table(bk: booking):
 
-    print("token: "+token)
-    print(request.headers.items())
-    email = jwt.decode(token,options = {"verify_signature":False})["email"]
-    booking_result = database.create_contiguous_booking(email,bk.seat_count,bk.start_time);
+    booking_result = database.create_contiguous_booking(bk.email,bk.seat_count,bk.start_time);
     if(booking_result is not None):
         #create the order
         order_list = []
         for i in bk.orders:
             order_list.append({"item_id":i.item_id})
 
-        order_creation_result = database.create_order(email,order_list,bk.start_time)
+        order_creation_result = database.create_order(bk.email,order_list,bk.start_time)
 
         if(order_creation_result is not None):
 
@@ -148,27 +142,11 @@ def book_table(request: Request,bk: booking,token: str = Header(None)):
 
 #MENU Endpoints
 
-@app.get("/menu/{canteen_id}",dependencies= [Depends(check_jwt_token)],status_code = 200)
-def get_menu(canteen_id:int):
-
-    menu = database.get_menu(canteen_id)
-    return menu
 
 
-@app.post("/menu/{canteen_id}",dependencies= [Depends(check_jwt_admin_token)],status_code = 200)
-def add_item(mu: menu_item,canteen_id:int):
-    pass
-
-@app.put("/menu/{canteen_id}",dependencies= [Depends(check_jwt_admin_token)],status_code = 200)
-def update_item(mu: menu_item,canteen_id:int):
-    pass
-
-#@app.("/menu/{canteen_id}",dependencies= [Depends(check_jwt_admin_token)],status_code = 200)
-#def update_item(mu: menu_item,canteen_id:int):
-#    pass
 
 #ORDER Endpoints
-@app.get("/orders/{time_quantum}",dependencies= [Depends(check_jwt_admin_token)],status_code = 200,response_model = list[next_orders])
+@app.get("/orders/{time_quantum}",status_code = 200,response_model = list[next_orders])
 def get_orders(time_quantum:int):
     """ Returns the orders from current_time to current_time +3 to the frontend. Let the fronend categorise the order into (today, tomorrow, so and so forth)"""
     order_list = database.get_orders(time_quantum)
@@ -177,7 +155,7 @@ def get_orders(time_quantum:int):
     else:
         return HTTPException(status_code=404, detail = "error,cannot find error ID")
 
-@app.put("/orders",dependencies= [Depends(check_jwt_admin_token)],status_code = 200)
+@app.put("/orders", status_code = 200)
 def update_order(ou: order_update):
     """ updates the order """
     order_list = []
