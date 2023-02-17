@@ -56,7 +56,8 @@ def create_admin(email, password):
 def create_contiguous_booking(email, count, time):
     #search for tables with available seats in timeslot given
     table = db.table
-    all_tables = table.find().sort({"id":1})
+#    breakpoint()
+    all_tables = table.find()
     for i in all_tables:
         #iterate over all tables to fix some edge cases
         cur_table_id = i.get('_id')
