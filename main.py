@@ -24,7 +24,8 @@ ADMIN_SECRET_KEY = "adminusercanteenbooking"
 EXPIRY_TIME = 60 * 24 * 7
 
 class order(BaseModel):
-    item_id: int
+    item_name: str
+    item_qty: int
 
 class next_orders(BaseModel):
     user_id: str
@@ -120,7 +121,7 @@ def book_table(bk: booking):
         #create the order
         order_list = []
         for i in bk.orders:
-            order_list.append({"item_id":i.item_id})
+            order_list.append({"item_qty":i.item_qty,"item_name":i.item_name})
 
         order_creation_result = database.create_order(bk.email,order_list,bk.start_time)
 
@@ -129,6 +130,10 @@ def book_table(bk: booking):
             res_dict = {"status":"success"}
             res_dict.update(order_creation_result)
             res_dict.update(booking_result)
+            res_dict["email"] = bk.email
+            res_dict["seat_count"] = bk.seat_count
+            res_dict["start_time"] = bk.start_time
+            res_dict["orders"] = order_list
             return res_dict
         else:
             res = {"status":"failure","error":"order creation failed"}
@@ -136,12 +141,6 @@ def book_table(bk: booking):
     else:
         res = {"status":"failure","error":"Bookings full"}
         return res
-
-
-
-
-#MENU Endpoints
-
 
 
 
@@ -184,11 +183,19 @@ async def order_status(websocket: WebSocket, order_id: str):
 async def new_order(websocket: WebSocket):
 
     await websocket.accept()
+    time_quantum = None
     while True:
         client_data = await websocket.receive_text()
-        new_ord = streams.get_new_order()
-        new_ord_string = json.dumps(new_ord)
-        await websocket.send_text(new_ord_string)
+        client_data = json.loads(client_data)
+        if time_quantum is not None:
+            new_ord = streams.get_new_order(time_quantum)
+            new_ord_string = json.dumps(new_ord)
+            await websocket.send_text(new_ord_string)
+
+        if("time_quantum" in client_data):
+            time_quantum = client_data["time_quantum"]
+            await websocket.send_text(json.dumps({"message":"time_quantum_recieved"}))
+
         
 
 
@@ -223,7 +230,6 @@ def admin_register(pl : payload):
 
 
 
-#TEMPORARY DB FUNCTIONS: WILL BE SHIFTED TO DATABASE.py
 
 
 
