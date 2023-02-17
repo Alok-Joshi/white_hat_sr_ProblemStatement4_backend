@@ -119,7 +119,11 @@ def get_orders(time_quantum=3):
     order = db.order
     now = datetime.datetime.now()
     res = order.find({"$and":[{"from":{"$gte":now}},{"to":{"$lte":now+datetime.timedelta(hours=time_quantum)}}]})
-    return list(res)
+    ret = []
+    for i in res:
+        i.pop("_id")
+        ret.append(i)
+    return ret
 
 
 print(get_orders(3))
