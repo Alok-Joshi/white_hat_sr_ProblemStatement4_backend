@@ -38,12 +38,12 @@ def create_contiguous_booking(email="shreyas", count=1, time=datetime.datetime(2
         #iterate over all tables to fix some edge cases
         cur_table_id = i.get('_id')
         cur_table_bookings = i.get('bookings')
-        if len(cur_table_bookings)==0:
+        if cur_table_bookings==None:
             #no future bookings on this table
             table.update_one({'_id':cur_table_id}, {'$push':{'bookings':{"from":time, "to":time+datetime.timedelta(minutes=30), "seats_booked":count, "by":[email]}}})
             return i.get('id')
         else:
-            timeslot_preset = False
+            timeslot_present = False
             for j in range(len(cur_table_bookings)):
                 if cur_table_bookings[j].get('from')==time and cur_table_bookings[j].get('to')==time+datetime.timedelta(minutes=30):
                     #print("true")
@@ -58,9 +58,11 @@ def create_contiguous_booking(email="shreyas", count=1, time=datetime.datetime(2
                         #print("Left seats: ",i.get('max_seats')-cur_table_bookings[j].get('seats_booked'))
                         #left_seats = i.get('max_seats')-cur_table_bookings[j].get('seats_booked') 
                         table.update_one({'_id':cur_table_id},{'$set':{f"bookings.{j}.seats_booked":(cur_seats_booked_for_slot+count)}, '$push':{f"bookings.{j}.by": email}})
+                        return {"table_name": i.get('id')}
+
             if not timeslot_present:
                 table.update_one({'_id':cur_table_id}, {'$push':{'bookings':{"from":time, "to":time+datetime.timedelta(minutes=30), "seats_booked":count, "by":[email]}}})
-                return i.get('id')
+                return {"table_name": i.get('id')}
     #no table matches condition
     #that is everything is full
     return None
@@ -77,7 +79,7 @@ def create_order(email, items, time, order_type=0):
     data = {"id":order_id, "user_id":email, "status":"placed", "items":items, "order_type":order_type, "from":time, "to":time+datetime.timedelta(minutes=30)}
 
     order.insert_one(data)
-    return order_id
+    return {"order_id":order_id}
     #return None
 
 def get_menu(canteen_id=1):

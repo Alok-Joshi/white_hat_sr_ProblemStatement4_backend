@@ -5,6 +5,7 @@ import jwt
 import datetime
 import database
 import streams
+import json
 
 origins = [ '*' ]
 
@@ -33,12 +34,16 @@ class order(BaseModel):
 class booking(BaseModel):
     seat_count: int
     orders: list[order]
+    start_time: datetime.datetime
 
 
 class menu_item(BaseModel):
     item_name: str
     item_price : int
 
+class order_update(BaseModel):
+    order_id:str
+    order_status:str
 
 def get_jwt_token(email: str):
     return jwt.encode({ "email" : email ,
@@ -104,20 +109,27 @@ def get_bookings():
 def book_table(bk: booking,token: str = Header(None)):
 
     email = jwt.decode(token,options = {"verify_signature":False})["email"]
-    booking_result = database.create_contiguous_booking(email,bk.seat_count);
+    booking_result = database.create_contiguous_booking(email,bk.seat_count,bk.start_time);
     if(booking_result is not None):
         #create the order
-        order_creation_result = database.create_order(email,booking.orders)
+        order_list = []
+        for i in bk.orders:
+            order_list.append({"item_id":i.item_id})
+
+        order_creation_result = database.create_order(email,order_list,bk.start_time)
 
         if(order_creation_result is not None):
-            #TODO: Return a  dictionary denoting success
-            pass
+
+            res_dict = {"status":"success"}
+            res_dict.update(order_creation_result)
+            res_dict.update(booking_result)
+            return res_dict
         else:
-            #TODO: return a dictionary denoting failure to create order (with reason)
-            pass
+            res = {"status":"failure","error":"order creation failed"}
+            return res
     else:
-        #TODO: return a dictionary denoting failure to book (with reason)
-        pass
+        res = {"status":"failure","error":"Bookings full"}
+        return res
 
 
 
@@ -143,6 +155,22 @@ def update_item(mu: menu_item,canteen_id:int):
 #def update_item(mu: menu_item,canteen_id:int):
 #    pass
 
+#ORDER Endpoints
+@app.get("/orders/{canteen_id}",dependencies= [Depends(check_jwt_admin_token)],status_code = 200)
+def get_orders(canteen_id:int):
+    """ Returns the orders from current_time to current_time +3 to the frontend. Let the fronend categorise the order into (today, tomorrow, so and so forth)"""
+    pass
+
+@app.put("/orders",dependencies= [Depends(check_jwt_admin_token)],status_code = 200)
+def update_order(ou: order_update):
+    """ updates the order """
+
+    order_update_result = database.update_order(ou.order_id,ou.order_status)
+    if(order_update_result is not None):
+        #return success message
+        pass
+    else:
+        raise HTTPException(status_code = 404, detail= "order updation failed")
 
 #LISTENERS 
 @app.websocket("/ws/notifications/orderstatus/{order_id}")
@@ -169,7 +197,6 @@ async def new_order(websocket: WebSocket):
 
 
 #ADMIN ENDPOINTS
-
 @app.post("/admin/login",status_code = 200)
 def admin_login(pl: payload):
     if pl.password == None:
@@ -198,6 +225,9 @@ def admin_register(pl : payload):
     else:
         raise HTTPException(status_code = 404, detail = "No password entered")
 
+
+
+#TEMPORARY DB FUNCTIONS: WILL BE SHIFTED TO DATABASE.py
 
 
 
