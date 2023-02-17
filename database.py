@@ -3,7 +3,7 @@ client = pymongo.MongoClient('mongodb+srv://shreyas22010793:A1Hn12yTvIvx21fw@clu
 db = client.test2DB
 order_no = 1
 
-def authenticate(email="xyz@gmail.com", password="password"):
+def authenticate(email, password):
     #check if user exists, and sign them in
     #return true if successful else return NONE
     user = db.user
@@ -17,7 +17,19 @@ def authenticate(email="xyz@gmail.com", password="password"):
             return None
     return res
 
-def create_user(email="xy@gmail.com", password="password"):
+def authenticate_admin(email, password):
+    #similar to authenticate just for admins
+    admin = db.admin
+    res = admin.find_one({"email":email})
+    if res is not None:
+        pswd = res.get('password')
+        if pswd==password:
+            return True
+        else:
+            return None
+    return None
+
+def create_user(email, password):
     #check if email already exists, if yes return NONE else return true
     user = db.user
     res = list(user.find({"email":email}))
@@ -30,7 +42,18 @@ def create_user(email="xy@gmail.com", password="password"):
         #user exists
         return None
 
-def create_contiguous_booking(email="shreyas", count=1, time=datetime.datetime(2023, 2, 17, 8,0)):
+def create_admin(email, password):
+    #similar to create_user
+    admin = db.admin
+    res = list(admin.find({"email":email}))
+    if len(res)==0:
+        admindata = {"email":email, "password":password}
+        admin.insert_one(admindata)
+        return True
+    else:
+        return None
+
+def create_contiguous_booking(email, count, time):
     #search for tables with available seats in timeslot given
     table = db.table
     all_tables = table.find()
@@ -82,7 +105,7 @@ def create_order(email, items, time, order_type=0):
     return {"order_id":order_id}
     #return None
 
-def get_menu(canteen_id=1):
+def get_menu(canteen_id):
     #return menu items list with price
     menu = db.menu
     res = menu.find_one({"canteen_id":canteen_id})
@@ -98,4 +121,3 @@ def get_orders(time_quantum=3):
     res = orders.find({"$and":[{"from":{"$gte":datetime.datetime.now()}},{"to":{"$lte":datetime.datetime.now()+datetime.timedelta(hours=time_quantum)}}]})
     return list(res)
 
-print(create_order("xyz@gmial.com", ["chaha","khari"], datetime.datetime(2023, 2, 17, 11,0)))
