@@ -180,7 +180,7 @@ async def order_status(websocket: WebSocket, order_id: str):
         await websocket.send_text(modified_order_document)
 
 
-@app.websocket("/ws/notifications/neworders/{canteen_id}")
+@app.websocket("/ws/notifications/neworders}")
 async def new_order(websocket: WebSocket):
 
     await websocket.accept()
