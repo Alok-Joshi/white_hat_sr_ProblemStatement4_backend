@@ -146,7 +146,7 @@ def book_table(bk: booking):
 
 
 #ORDER Endpoints
-@app.get("/orders/",status_code = 200,response_model = list[next_orders])
+@app.get("/orders",status_code = 200,response_model = list[next_orders])
 def get_orders():
     """ Returns the orders from current_time to current_time +3 to the frontend. Let the fronend categorise the order into (today, tomorrow, so and so forth)"""
     order_list = database.get_orders()
