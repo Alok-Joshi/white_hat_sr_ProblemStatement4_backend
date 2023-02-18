@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Header, HTTPException, Depends, WebSocket 
+from fastapi import FastAPI, Header, HTTPException, Depends, WebSocket , Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import jwt
@@ -24,9 +24,11 @@ ADMIN_SECRET_KEY = "adminusercanteenbooking"
 EXPIRY_TIME = 60 * 24 * 7
 
 class order(BaseModel):
-    item_id: int
+    item_name: str
+    item_qty: int
 
 class next_orders(BaseModel):
+    id:int
     user_id: str
     status: str
     items: list[order]
@@ -44,6 +46,7 @@ class booking(BaseModel):
     seat_count: int
     orders: list[order]
     start_time: datetime.datetime
+    email:str
 
 
 class menu_item(BaseModel):
@@ -61,6 +64,7 @@ def get_jwt_token(email: str):
 
 def check_jwt_token(token : str = Header(None)):
     try:
+        print("inside func:"+token)
         return jwt.decode(token, USER_SECRET_KEY, algorithms=["HS256"])
     except:
         raise HTTPException(status_code=404, detail="JWT_TOKEN_NOT_FOUND")
@@ -109,29 +113,28 @@ def register( pl : payload):
 
 
 
-@app.get("/booking", dependencies=[Depends(check_jwt_token)],status_code = 200)
-def get_bookings():
-    #implement in future when there is a need to display bookings like bookmyshow
-    pass
 
-@app.post("/booking", dependencies=[Depends(check_jwt_token)],status_code = 200)
-def book_table(bk: booking,token: str = Header(None)):
+@app.post("/booking", status_code = 200)
+def book_table(bk: booking):
 
-    email = jwt.decode(token,options = {"verify_signature":False})["email"]
-    booking_result = database.create_contiguous_booking(email,bk.seat_count,bk.start_time);
+    booking_result = database.create_contiguous_booking(bk.email,bk.seat_count,bk.start_time);
     if(booking_result is not None):
         #create the order
         order_list = []
         for i in bk.orders:
-            order_list.append({"item_id":i.item_id})
+            order_list.append({"item_qty":i.item_qty,"item_name":i.item_name})
 
-        order_creation_result = database.create_order(email,order_list,bk.start_time)
+        order_creation_result = database.create_order(bk.email,order_list,bk.start_time)
 
         if(order_creation_result is not None):
 
             res_dict = {"status":"success"}
             res_dict.update(order_creation_result)
             res_dict.update(booking_result)
+            res_dict["email"] = bk.email
+            res_dict["seat_count"] = bk.seat_count
+            res_dict["start_time"] = bk.start_time
+            res_dict["orders"] = order_list
             return res_dict
         else:
             res = {"status":"failure","error":"order creation failed"}
@@ -142,30 +145,8 @@ def book_table(bk: booking,token: str = Header(None)):
 
 
 
-
-#MENU Endpoints
-
-@app.get("/menu/{canteen_id}",dependencies= [Depends(check_jwt_token)],status_code = 200)
-def get_menu(canteen_id:int):
-
-    menu = database.get_menu(canteen_id)
-    return menu
-
-
-@app.post("/menu/{canteen_id}",dependencies= [Depends(check_jwt_admin_token)],status_code = 200)
-def add_item(mu: menu_item,canteen_id:int):
-    pass
-
-@app.put("/menu/{canteen_id}",dependencies= [Depends(check_jwt_admin_token)],status_code = 200)
-def update_item(mu: menu_item,canteen_id:int):
-    pass
-
-#@app.("/menu/{canteen_id}",dependencies= [Depends(check_jwt_admin_token)],status_code = 200)
-#def update_item(mu: menu_item,canteen_id:int):
-#    pass
-
 #ORDER Endpoints
-@app.get("/orders/{time_quantum}",dependencies= [Depends(check_jwt_admin_token)],status_code = 200,response_model = list[next_orders])
+@app.get("/orders/{time_quantum}",status_code = 200,response_model = list[next_orders])
 def get_orders(time_quantum:int):
     """ Returns the orders from current_time to current_time +3 to the frontend. Let the fronend categorise the order into (today, tomorrow, so and so forth)"""
     order_list = database.get_orders(time_quantum)
@@ -174,7 +155,7 @@ def get_orders(time_quantum:int):
     else:
         return HTTPException(status_code=404, detail = "error,cannot find error ID")
 
-@app.put("/orders",dependencies= [Depends(check_jwt_admin_token)],status_code = 200)
+@app.put("/orders", status_code = 200)
 def update_order(ou: order_update):
     """ updates the order """
     order_list = []
@@ -199,15 +180,23 @@ async def order_status(websocket: WebSocket, order_id: str):
         await websocket.send_text(modified_order_document)
 
 
-@app.websocket("/ws/notifications/neworders/{canteen_id}")
+@app.websocket("/ws/notifications/neworders")
 async def new_order(websocket: WebSocket):
 
     await websocket.accept()
+    time_quantum = None
     while True:
         client_data = await websocket.receive_text()
-        new_ord = streams.get_new_order()
-        new_ord_string = json.dumps(new_ord)
-        await websocket.send_text(new_ord_string)
+        client_data = json.loads(client_data)
+        if time_quantum is not None:
+            new_ord = streams.get_new_order(time_quantum)
+            new_ord_string = json.dumps(new_ord)
+            await websocket.send_text(new_ord_string)
+
+        elif("time_quantum" in client_data):
+            time_quantum = client_data["time_quantum"]
+            await websocket.send_text(json.dumps({"message":"time_quantum_recieved"}))
+
         
 
 
@@ -242,7 +231,6 @@ def admin_register(pl : payload):
 
 
 
-#TEMPORARY DB FUNCTIONS: WILL BE SHIFTED TO DATABASE.py
 
 
 
