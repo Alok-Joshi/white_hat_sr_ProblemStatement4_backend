@@ -42,7 +42,6 @@ def get_order_update(order_id: int):
 
     if('updateDescription' in order_document): #Implies that a new order has been added
 
-        if(order_document['documentKey']['_id'] == order_id):
             return order_document['updateDescription']['updatedFields']
     else:
 
